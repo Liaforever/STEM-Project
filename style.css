@@ -5,30 +5,15 @@ body {
     margin: 0;
     padding: 20px;
 }
-h1 {
-    color: #2c3e50;
+h1 { color: #2c3e50; }
+#game-container { display: flex; justify-content: center; margin-top: 20px; }
+#mazeCanvas { border: 3px solid #2c3e50; background-color: white; }
+#progress-container { width: 80%; height: 20px; background: #ddd; margin: 15px auto; border-radius: 10px; }
+#progress-bar { height: 100%; background: #4caf50; width: 100%; border-radius: 10px; }
+#facts { margin-top: 20px; padding: 15px; background: #dff0d8; border: 2px solid #2c3e50; border-radius: 5px; max-width: 500px; margin-left: auto; margin-right: auto; }
+#mobile-controls { display: none; margin-top: 20px; }
+.control-btn { font-size: 24px; padding: 10px; margin: 5px; background: #4caf50; color: white; border: none; border-radius: 5px; }
+@media (max-width: 768px) {
+    #mobile-controls { display: block; }
 }
-#game-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
-}
-#mazeCanvas {
-    border: 3px solid #2c3e50;
-    background-color: white;
-}
-#timer {
-    margin-top: 15px;
-    font-size: 1.3em;
-    font-weight: bold;
-}
-#facts {
-    margin-top: 20px;
-    padding: 15px;
-    background: #dff0d8;
-    border: 2px solid #2c3e50;
-    border-radius: 5px;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-}
+

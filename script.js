@@ -1,128 +1,171 @@
 const canvas = document.getElementById("mazeCanvas");
 const ctx = canvas.getContext("2d");
-const mazeSize = 10;
+let mazeSize = 10;
 const cellSize = canvas.width / mazeSize;
+let maze = [];
 let player = { x: 0, y: 0 };
 let end = { x: mazeSize - 1, y: mazeSize - 1 };
-const maze = [
-    [0,1,0,0,0,1,0,0,0,0],
-    [0,1,0,1,0,1,0,1,1,0],
-    [0,0,0,1,0,0,0,1,0,0],
-    [1,1,0,1,1,1,0,1,0,1],
-    [0,0,0,0,0,0,0,0,0,0],
-    [0,1,1,1,1,1,1,1,1,0],
-    [0,0,0,0,0,0,0,1,0,0],
-    [0,1,1,1,1,1,0,1,1,0],
-    [0,0,0,0,0,0,0,0,0,0],
-    [0,1,1,1,1,1,1,1,1,0]
-];
+let hazards = [];
+let collectibles = [];
+let timeLeft = 60;
+let level = 1;
+let timerInterval;
+const factsElement = document.getElementById("facts");
+const progressBar = document.getElementById("progress-bar");
 const factsList = [
     "The last eight years were the hottest on record.",
     "Oceans absorb 90% of the heat caused by climate change.",
-    "Arctic sea ice has decreased by 13% per decade since 1979.",
-    "Sea levels have risen by about 8 inches since 1900.",
-    "Melting glaciers contribute 30% of sea level rise.",
-    "Coral reefs are bleaching due to warmer oceans.",
-    "Hurricanes are getting stronger because of warmer seas.",
-    "Heatwaves kill more people annually than any other extreme weather.",
-    "Flooding events are becoming more frequent.",
-    "Droughts now last longer and cover wider areas.",
-    "Burning fossil fuels is the main cause of climate change.",
-    "Coal is the dirtiest fossil fuel, emitting the most CO₂.",
-    "Renewable energy like wind and solar is now cheaper than coal in many places.",
-    "Deforestation adds huge amounts of CO₂ to the air.",
-    "Methane is 25 times more powerful than CO₂ over 100 years.",
-    "Cows produce large amounts of methane.",
-    "Transportation makes up about 14% of global greenhouse gas emissions.",
-    "Cement production causes 8% of global CO₂ emissions.",
-    "If food waste were a country, it would be the 3rd largest emitter of greenhouse gases.",
     "Planting trees helps absorb CO₂ from the atmosphere.",
-    "Eating less meat lowers your carbon footprint.",
-    "Recycling reduces the need for energy-intensive production.",
-    "Rooftop gardens help reduce urban heat and absorb CO₂.",
-    "Electric cars emit less CO₂ over their lifetime than gas cars.",
-    "The ocean produces over 50% of the world’s oxygen.",
-    "Oceans absorb about 30% of the CO₂ humans produce.",
-    "Coral reefs support about 25% of all marine life.",
-    "Mangroves store five times more carbon than most forests.",
-    "Seaweed farming can help absorb CO₂.",
-    "The ocean’s circulation system is slowing down due to melting ice.",
-    "Jellyfish populations are growing in some areas because of warming waters.",
-    "Humans release over 36 billion tons of CO₂ each year.",
-    "We lose 11 football fields of rainforest every minute.",
-    "Only about 9% of plastic waste is recycled.",
-    "By 2050, climate change could force 1 billion people to migrate.",
-    "Every year, 8 million tons of plastic enter the ocean.",
-    "Climate disasters cost the global economy over $250 billion in 2021.",
-    "Thawing permafrost can release ancient viruses.",
-    "Climate change can make coffee plants less productive.",
-    "Wine quality may drop as grapes struggle with heat.",
-    "Some flowers now bloom earlier than pollinators arrive.",
-    "Lightning strikes are expected to increase with global warming.",
-    "Cities can be up to 5°C hotter than surrounding areas.",
-    "Warmer winters let more pests survive to damage crops.",
-    "Climate change is lengthening allergy seasons."
+    "Renewable energy is now cheaper than coal in many places.",
+    "By 2050, climate change could force 1 billion people to migrate."
 ];
-let timeLeft = 180;
-const timerElement = document.getElementById("timer");
-const factsElement = document.getElementById("facts");
-let timerInterval;
+
+// Generate procedural maze
+function generateMaze(size) {
+    let grid = Array.from({ length: size }, () => Array(size).fill(1));
+    function carve(x, y) {
+        const dirs = [[0,-1],[0,1],[-1,0],[1,0]].sort(() => Math.random() - 0.5);
+        for (let [dx, dy] of dirs) {
+            let nx = x + dx*2, ny = y + dy*2;
+            if (ny > 0 && ny < size && nx > 0 && nx < size && grid[ny][nx] === 1) {
+                grid[ny][nx] = 0;
+                grid[y + dy][x + dx] = 0;
+                carve(nx, ny);
+            }
+        }
+    }
+    grid[1][0] = 0;
+    grid[size-2][size-1] = 0;
+    grid[0][0] = 0;
+    carve(0,0);
+    return grid;
+}
+
+// Place hazards & collectibles
+function placeHazardsAndCollectibles() {
+    hazards = [];
+    collectibles = [];
+    for (let i = 0; i < Math.floor(mazeSize/2); i++) {
+        hazards.push({ x: rand(mazeSize), y: rand(mazeSize) });
+    }
+    for (let i = 0; i < Math.floor(mazeSize/2); i++) {
+        collectibles.push({ x: rand(mazeSize), y: rand(mazeSize) });
+    }
+}
+function rand(max) { return Math.floor(Math.random() * max); }
+
+// Draw game
 function drawMaze() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     for (let y = 0; y < mazeSize; y++) {
         for (let x = 0; x < mazeSize; x++) {
             ctx.fillStyle = maze[y][x] === 1 ? "#2c3e50" : "#ffffff";
-            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-            ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+            ctx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize);
         }
     }
+    // Hazards
+    ctx.fillStyle = "rgba(200,0,0,0.7)";
+    hazards.forEach(h => ctx.fillRect(h.x*cellSize, h.y*cellSize, cellSize, cellSize));
+    // Collectibles
     ctx.fillStyle = "green";
-    ctx.fillRect(player.x * cellSize, player.y * cellSize, cellSize, cellSize);
-    ctx.fillStyle = "red";
-    ctx.fillRect(end.x * cellSize, end.y * cellSize, cellSize, cellSize);
+    collectibles.forEach(c => ctx.fillRect(c.x*cellSize, c.y*cellSize, cellSize, cellSize));
+    // Player
+    ctx.fillStyle = "blue";
+    ctx.fillRect(player.x*cellSize, player.y*cellSize, cellSize, cellSize);
+    // End
+    ctx.fillStyle = "gold";
+    ctx.fillRect(end.x*cellSize, end.y*cellSize, cellSize, cellSize);
 }
+
 function movePlayer(dx, dy) {
     let newX = player.x + dx;
     let newY = player.y + dy;
     if (newX >= 0 && newX < mazeSize && newY >= 0 && newY < mazeSize && maze[newY][newX] === 0) {
         player.x = newX;
         player.y = newY;
-        drawMaze();
+        checkCollectible();
+        checkHazard();
         checkWin();
+        drawMaze();
     }
 }
+
+function checkCollectible() {
+    collectibles = collectibles.filter(c => {
+        if (c.x === player.x && c.y === player.y) {
+            timeLeft += 5;
+            showFactPopup();
+            return false;
+        }
+        return true;
+    });
+}
+function checkHazard() {
+    hazards.forEach(h => {
+        if (h.x === player.x && h.y === player.y) {
+            timeLeft -= 5;
+        }
+    });
+}
+function showFactPopup() {
+    let fact = factsList[Math.floor(Math.random() * factsList.length)];
+    factsElement.innerHTML = `<p><strong>🌱 Fact:</strong> ${fact}</p>`;
+}
+
 function checkWin() {
     if (player.x === end.x && player.y === end.y) {
         clearInterval(timerInterval);
-        showFacts();
+        if (level < 3) {
+            level++;
+            mazeSize += 5;
+            startLevel();
+        } else {
+            victory();
+        }
     }
 }
+
+function victory() {
+    factsElement.innerHTML = "<h2>🎉 You Won!</h2><p>You're a climate hero!</p>";
+    confettiEffect();
+}
+function confettiEffect() {
+    for (let i = 0; i < 100; i++) {
+        setTimeout(() => {
+            ctx.fillStyle = `hsl(${Math.random()*360},100%,50%)`;
+            ctx.fillRect(rand(mazeSize)*cellSize, rand(mazeSize)*cellSize, cellSize, cellSize);
+        }, i*20);
+    }
+}
+
 function startTimer() {
+    clearInterval(timerInterval);
     timerInterval = setInterval(() => {
         timeLeft--;
-        let minutes = Math.floor(timeLeft / 60);
-        let seconds = timeLeft % 60;
-        timerElement.textContent = `Time Left: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        let progress = (timeLeft / 60) * 100;
+        progressBar.style.width = `${progress}%`;
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
-            timerElement.textContent = "Time's up!";
+            factsElement.innerHTML = "<h2>⏳ Time's up!</h2>";
         }
     }, 1000);
 }
-function showFacts() {
-    let selectedFacts = [];
-    while (selectedFacts.length < 3) {
-        let randomFact = factsList[Math.floor(Math.random() * factsList.length)];
-        if (!selectedFacts.includes(randomFact)) {
-            selectedFacts.push(randomFact);
-        }
-    }
-    factsElement.innerHTML = "<h2>🌱 Climate Facts</h2><ul>" + selectedFacts.map(f => `<li>${f}</li>`).join("") + "</ul>";
+
+function startLevel() {
+    maze = generateMaze(mazeSize);
+    player = { x: 0, y: 0 };
+    end = { x: mazeSize - 1, y: mazeSize - 1 };
+    placeHazardsAndCollectibles();
+    drawMaze();
+    timeLeft = 60;
+    startTimer();
 }
-document.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowUp") movePlayer(0, -1);
-    if (e.key === "ArrowDown") movePlayer(0, 1);
-    if (e.key === "ArrowLeft") movePlayer(-1, 0);
-    if (e.key === "ArrowRight") movePlayer(1, 0);
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp") movePlayer(0,-1);
+    if (e.key === "ArrowDown") movePlayer(0,1);
+    if (e.key === "ArrowLeft") movePlayer(-1,0);
+    if (e.key === "ArrowRight") movePlayer(1,0);
 });
-drawMaze();
-startTimer();
+
+startLevel();
